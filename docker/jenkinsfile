@@ -1,0 +1,27 @@
+pipeline {
+    agent any
+    stages {
+        stage("Checkout") {
+            steps {
+                git 'https://github.com/gitudehh/duren-man.git'
+            }
+        }
+        stage("Install Docker on EC2 ") {
+            steps {
+                sh 'ssh ubuntu@10.0.2.100 sudo apt update -y && sudo apt-get install -y docker-ce docker-ce-cli containerd.io'
+            }
+        }
+        stage("Copy and Create Docker image from Dockerfile") {
+            steps {
+                sh 'scp Dockerfile ubuntu@10.0.2.100:/home/ubuntu/'
+                sh 'ssh ubuntu@10.0.2.100 cd /home/ubuntu/'
+                sh 'ssh ubuntu@10.0.2.100 sudo docker build -t nginx-duren-tes .' 
+            }
+        }
+        stage('Run Docker Container') {
+            steps {
+                sh 'ssh ubuntu@10.0.2.100 docker run -d --name nginx-duren -p 8080:80 nginx-duren-tes'
+            }
+        }
+    }
+}

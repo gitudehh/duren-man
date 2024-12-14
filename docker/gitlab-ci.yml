@@ -1,0 +1,28 @@
+stages:
+  - build
+
+.ssh-prepare:
+  image: alpine:latest
+  variables:
+    env: staging
+  before_script:
+  #get & prepare ssh credential from gitlab variabel
+  - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan $VM_IPADDRESS >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+
+backup-postgresql:
+  stage: build
+  extends: 
+    - .ssh-prepare
+  script:
+  - scp -i Dockerfile $SSH_USER@$VM_IPADDRESS:/home/ubuntu/       #copy Dockerfiile to EC2
+  - scp -i hello.txt $SSH_USER@$VM_IPADDRESS:/home/ubuntu/         #copy hello.txt to EC2
+  - ssh $SSH_USER@$VM_IPADDRESS "hostname && echo 'Install Docker and Build Docker Image!!!' > welcome.txt"
+  - ssh $SSH_USER@$VM_IPADDRESS "sudo apt update -y && sudo apt-get install -y docker-ce docker-ce-cli containerd.io"       #instal docker
+  - ssh $SSH_USER@$VM_IPADDRESS "docker build -t nginx-duren-tes -f/home/ubuntu/Dockerfile ."
+  - ssh $SSH_USER@$VM_IPADDRESS "docker images && docker ps"
